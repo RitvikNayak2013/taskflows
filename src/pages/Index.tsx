@@ -1,7 +1,6 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   LayoutDashboard, 
   FileText, 
@@ -13,7 +12,8 @@ import {
   BarChart3,
   Search,
   Bell,
-  User
+  User,
+  RefreshCw
 } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
@@ -24,46 +24,50 @@ import { CalendarView } from "@/components/CalendarView";
 import { FileManager } from "@/components/FileManager";
 import { Analytics } from "@/components/Analytics";
 import { SettingsPage } from "@/components/SettingsPage";
+import { Logo } from "@/components/Logo";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const renderContent = () => {
+    const key = `${activeTab}-${refreshKey}`;
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard key={key} />;
       case "editor":
-        return <TextEditor />;
+        return <TextEditor key={key} />;
       case "todos":
-        return <TodoList />;
+        return <TodoList key={key} />;
       case "notes":
-        return <Notes />;
+        return <Notes key={key} />;
       case "calendar":
-        return <CalendarView />;
+        return <CalendarView key={key} />;
       case "files":
-        return <FileManager />;
+        return <FileManager key={key} />;
       case "analytics":
-        return <Analytics />;
+        return <Analytics key={key} />;
       case "settings":
-        return <SettingsPage />;
+        return <SettingsPage key={key} />;
       default:
-        return <Dashboard />;
+        return <Dashboard key={key} />;
     }
   };
 
+  const refreshCurrentTab = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 px-6 py-4">
+        {/* Enhanced Header */}
+        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/60 px-8 py-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">TaskFlows</h1>
-              <p className="text-slate-600 text-sm">Your productivity workspace</p>
-            </div>
+            <Logo size="lg" />
             
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -71,16 +75,26 @@ const Index = () => {
                 <input
                   type="text"
                   placeholder="Search everything..."
-                  className="pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  className="pl-10 pr-4 py-3 bg-slate-100/80 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-72 text-sm transition-all"
                 />
               </div>
               
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={refreshCurrentTab}
+                className="relative hover:bg-blue-50 transition-colors rounded-xl p-3"
+                title="Refresh current view"
+              >
+                <RefreshCw className="h-4 w-4" />
               </Button>
               
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="relative hover:bg-blue-50 transition-colors rounded-xl p-3">
+                <Bell className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">3</span>
+              </Button>
+              
+              <Button variant="ghost" size="sm" className="hover:bg-blue-50 transition-colors rounded-xl p-3">
                 <User className="h-4 w-4" />
               </Button>
             </div>
@@ -88,7 +102,7 @@ const Index = () => {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-8 overflow-auto">
           {renderContent()}
         </main>
       </div>

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +15,7 @@ import {
   Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { dataService } from "@/services/dataService";
 
 interface Task {
   id: string;
@@ -28,34 +28,7 @@ interface Task {
 }
 
 export const TodoList = () => {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Complete project proposal",
-      completed: false,
-      priority: "high",
-      category: "Work",
-      dueDate: "2024-01-15",
-      createdAt: new Date()
-    },
-    {
-      id: "2",
-      title: "Review design mockups",
-      completed: true,
-      priority: "medium",
-      category: "Design",
-      createdAt: new Date()
-    },
-    {
-      id: "3",
-      title: "Schedule team meeting",
-      completed: false,
-      priority: "low",
-      category: "Management",
-      createdAt: new Date()
-    }
-  ]);
-  
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState("");
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high">("medium");
   const [newCategory, setNewCategory] = useState("Work");
@@ -64,6 +37,11 @@ export const TodoList = () => {
   const { toast } = useToast();
 
   const categories = ["Work", "Personal", "Design", "Development", "Management", "Health"];
+
+  useEffect(() => {
+    const data = dataService.getData();
+    setTasks(data.tasks);
+  }, []);
 
   const addTask = () => {
     if (!newTask.trim()) {
@@ -85,7 +63,16 @@ export const TodoList = () => {
       createdAt: new Date()
     };
 
-    setTasks(prev => [task, ...prev]);
+    const data = dataService.getData();
+    data.tasks.unshift(task);
+    dataService.saveData(data);
+    dataService.addActivity({
+      type: "created",
+      title: `Created task: ${task.title}`,
+      timestamp: new Date()
+    });
+
+    setTasks(data.tasks);
     setNewTask("");
     setNewDueDate("");
     
@@ -96,15 +83,35 @@ export const TodoList = () => {
   };
 
   const toggleTask = (id: string) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+    const data = dataService.getData();
+    const taskIndex = data.tasks.findIndex(t => t.id === id);
+    if (taskIndex !== -1) {
+      data.tasks[taskIndex].completed = !data.tasks[taskIndex].completed;
+      dataService.saveData(data);
+      dataService.addActivity({
+        type: data.tasks[taskIndex].completed ? "completed" : "uncompleted",
+        title: `${data.tasks[taskIndex].completed ? "Completed" : "Reopened"} task: ${data.tasks[taskIndex].title}`,
+        timestamp: new Date()
+      });
+      setTasks(data.tasks);
+    }
   };
 
   const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(task => task.id !== id));
+    const data = dataService.getData();
+    const task = data.tasks.find(t => t.id === id);
+    data.tasks = data.tasks.filter(t => t.id !== id);
+    dataService.saveData(data);
+    
+    if (task) {
+      dataService.addActivity({
+        type: "deleted",
+        title: `Deleted task: ${task.title}`,
+        timestamp: new Date()
+      });
+    }
+
+    setTasks(data.tasks);
     toast({
       title: "Task deleted",
       description: "The task has been removed from your list.",
@@ -159,9 +166,14 @@ export const TodoList = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">To-Do Lists</h2>
-        <p className="text-slate-600">Organize your tasks and boost your productivity.</p>
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-3xl"></div>
+        <div className="relative p-8">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
+            To-Do Lists
+          </h2>
+          <p className="text-slate-600 text-lg">Organize your tasks and boost your productivity.</p>
+        </div>
       </div>
 
       {/* Stats */}

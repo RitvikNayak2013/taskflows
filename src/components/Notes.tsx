@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import {
   Edit
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { dataService } from "@/services/dataService";
 
 interface Note {
   id: string;
@@ -26,25 +26,7 @@ interface Note {
 }
 
 export const Notes = () => {
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: "1",
-      title: "Project Ideas",
-      content: "1. Build a task management app\n2. Create a note-taking system\n3. Design a calendar interface",
-      tags: ["ideas", "projects"],
-      createdAt: new Date(2024, 0, 10),
-      updatedAt: new Date(2024, 0, 10)
-    },
-    {
-      id: "2",
-      title: "Meeting Notes",
-      content: "Discussed the new feature requirements:\n- User authentication\n- Data persistence\n- Responsive design",
-      tags: ["meeting", "work"],
-      createdAt: new Date(2024, 0, 12),
-      updatedAt: new Date(2024, 0, 12)
-    }
-  ]);
-  
+  const [notes, setNotes] = useState<Note[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,6 +36,11 @@ export const Notes = () => {
     tags: ""
   });
   const { toast } = useToast();
+
+  useEffect(() => {
+    const data = dataService.getData();
+    setNotes(data.notes);
+  }, []);
 
   const createNote = () => {
     if (!newNote.title.trim() || !newNote.content.trim()) {
@@ -74,7 +61,16 @@ export const Notes = () => {
       updatedAt: new Date()
     };
 
-    setNotes(prev => [note, ...prev]);
+    const data = dataService.getData();
+    data.notes.unshift(note);
+    dataService.saveData(data);
+    dataService.addActivity({
+      type: "created",
+      title: `Created note: ${note.title}`,
+      timestamp: new Date()
+    });
+
+    setNotes(data.notes);
     setNewNote({ title: "", content: "", tags: "" });
     setIsCreating(false);
     
@@ -85,13 +81,18 @@ export const Notes = () => {
   };
 
   const updateNote = (id: string, updates: Partial<Note>) => {
-    setNotes(prev =>
-      prev.map(note =>
-        note.id === id
-          ? { ...note, ...updates, updatedAt: new Date() }
-          : note
-      )
-    );
+    const data = dataService.getData();
+    const noteIndex = data.notes.findIndex(n => n.id === id);
+    if (noteIndex !== -1) {
+      data.notes[noteIndex] = { ...data.notes[noteIndex], ...updates, updatedAt: new Date() };
+      dataService.saveData(data);
+      dataService.addActivity({
+        type: "updated",
+        title: `Updated note: ${data.notes[noteIndex].title}`,
+        timestamp: new Date()
+      });
+      setNotes(data.notes);
+    }
     setEditingId(null);
     
     toast({
@@ -101,7 +102,20 @@ export const Notes = () => {
   };
 
   const deleteNote = (id: string) => {
-    setNotes(prev => prev.filter(note => note.id !== id));
+    const data = dataService.getData();
+    const note = data.notes.find(n => n.id === id);
+    data.notes = data.notes.filter(n => n.id !== id);
+    dataService.saveData(data);
+    
+    if (note) {
+      dataService.addActivity({
+        type: "deleted",
+        title: `Deleted note: ${note.title}`,
+        timestamp: new Date()
+      });
+    }
+
+    setNotes(data.notes);
     toast({
       title: "Note deleted",
       description: "The note has been removed.",
@@ -118,9 +132,14 @@ export const Notes = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">Notes</h2>
-        <p className="text-slate-600">Capture your thoughts and ideas instantly.</p>
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-3xl"></div>
+        <div className="relative p-8">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent mb-3">
+            Notes
+          </h2>
+          <p className="text-slate-600 text-lg">Capture your thoughts and ideas instantly.</p>
+        </div>
       </div>
 
       {/* Stats and Actions */}
